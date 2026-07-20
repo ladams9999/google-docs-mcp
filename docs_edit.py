@@ -40,9 +40,6 @@ import logging
 import os
 import re
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -64,10 +61,6 @@ CLIENT_ID_ENV_VAR = "GOOGLE_DOCS_MCP_CLIENT_ID"
 CLIENT_SECRET_ENV_VAR = "GOOGLE_DOCS_MCP_CLIENT_SECRET"
 CLIENT_ID_ENV_ALIASES = (CLIENT_ID_ENV_VAR, "GOOGLE_DRIVE_MCP_CLIENT_ID")
 CLIENT_SECRET_ENV_ALIASES = (CLIENT_SECRET_ENV_VAR, "GOOGLE_DRIVE_MCP_CLIENT_SECRET")
-APPS_SCRIPT_ID_ENV_VAR = "GOOGLE_DOCS_MCP_APPS_SCRIPT_ID"
-APPS_SCRIPT_ID_ENV_ALIASES = (APPS_SCRIPT_ID_ENV_VAR, "GOOGLE_DRIVE_MCP_APPS_SCRIPT_ID")
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-SCRIPT_API_BASE = "https://script.googleapis.com/v1"
 
 
 def _first_env(*names: str) -> str | None:
@@ -166,144 +159,6 @@ def _get_document(service, doc_id: str) -> dict:
         documentId=doc_id,
         suggestionsViewMode=SUGGESTIONS_VIEW_MODE,
     ).execute()
-
-
-def _refresh_access_token_stdlib() -> str:
-    """Refresh an OAuth access token without requiring googleapiclient."""
-    token_data = _load_token()
-    payload = urllib.parse.urlencode(
-        {
-            "client_id": token_data["client_id"],
-            "client_secret": token_data["client_secret"],
-            "refresh_token": token_data["refresh_token"],
-            "grant_type": "refresh_token",
-        }
-    ).encode("utf-8")
-    req = urllib.request.Request(TOKEN_URL, data=payload, method="POST")
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode("utf-8"))["access_token"]
-
-
-def _apps_script_api_request(
-    access_token: str,
-    method: str,
-    path: str,
-    body: dict | None = None,
-) -> dict:
-    req = urllib.request.Request(f"{SCRIPT_API_BASE}{path}", method=method)
-    req.add_header("Authorization", f"Bearer {access_token}")
-    req.add_header("Content-Type", "application/json; charset=utf-8")
-    if body is not None:
-        req.data = json.dumps(body).encode("utf-8")
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            raw = resp.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8")
-        try:
-            payload = json.loads(raw)
-            message = payload.get("error", {}).get("message", raw)
-        except json.JSONDecodeError:
-            message = raw
-        raise RuntimeError(f"Apps Script API request failed ({e.code}): {message}") from None
-
-
-def _build_bookmark_bridge_files() -> list[dict]:
-    code = r'''
-function createBookmarkAtText(docId, anchorText, occurrence) {
-  var doc = DocumentApp.openById(docId);
-  var body = doc.getBody();
-  var wanted = occurrence || 1;
-  var found = null;
-
-  for (var i = 0; i < wanted; i++) {
-    found = body.findText(anchorText, found);
-    if (!found) {
-      throw new Error('Anchor text not found for occurrence ' + wanted + ': ' + anchorText);
-    }
-  }
-
-  var elem = found.getElement();
-  var start = found.getStartOffset();
-  var end = found.getEndOffsetInclusive();
-  var pos = doc.newPosition(elem, start);
-  var bookmark = doc.addBookmark(pos);
-  return {
-    bookmarkId: bookmark.getId(),
-    matchText: elem.asText().getText().substring(start, end + 1)
-  };
-}
-'''.strip()
-
-    manifest = {
-        "timeZone": "Europe/London",
-        "exceptionLogging": "STACKDRIVER",
-        "runtimeVersion": "V8",
-        "oauthScopes": ["https://www.googleapis.com/auth/documents"],
-        "executionApi": {"access": "MYSELF"},
-    }
-
-    return [
-        {"name": "Code", "type": "SERVER_JS", "source": code},
-        {"name": "appsscript", "type": "JSON", "source": json.dumps(manifest)},
-    ]
-
-
-def _create_bookmark_via_apps_script(
-    doc_id: str,
-    anchor_text: str,
-    occurrence: int = 1,
-    *,
-    script_id: str | None = None,
-) -> dict:
-    script_id = script_id or _first_env(*APPS_SCRIPT_ID_ENV_ALIASES)
-    if not script_id:
-        raise RuntimeError(
-            "bookmark_jump requires a persistent Apps Script bridge. "
-            f"Set {APPS_SCRIPT_ID_ENV_VAR} to the script project ID "
-            "(legacy GOOGLE_DRIVE_MCP_APPS_SCRIPT_ID also works)."
-        )
-
-    access_token = _refresh_access_token_stdlib()
-    _apps_script_api_request(
-        access_token,
-        "PUT",
-        f"/projects/{script_id}/content",
-        {"files": _build_bookmark_bridge_files()},
-    )
-
-    result = _apps_script_api_request(
-        access_token,
-        "POST",
-        f"/scripts/{script_id}:run",
-        {
-            "function": "createBookmarkAtText",
-            "parameters": [doc_id, anchor_text, occurrence],
-            "devMode": True,
-        },
-    )
-
-    if "error" in result:
-        details = result.get("error", {}).get("details", [])
-        detail = details[0] if details else {}
-        message = detail.get("errorMessage") or result.get("error", {}).get("message") or json.dumps(result["error"])
-        raise RuntimeError(f"Apps Script bookmark creation failed: {message}")
-
-    payload = result.get("response", {}).get("result", {})
-    bookmark_id = payload.get("bookmarkId")
-    if not bookmark_id:
-        raise RuntimeError("Apps Script bookmark creation returned no bookmarkId")
-
-    return {
-        "script_id": script_id,
-        "bookmark_id": bookmark_id,
-        "matched_text": payload.get("matchText", anchor_text),
-    }
-
-
-def _build_bookmark_jump_url(doc_id: str, bookmark_id: str) -> str:
-    return f"https://docs.google.com/document/d/{doc_id}/edit#bookmark={bookmark_id}"
 
 
 # ---------------------------------------------------------------------------
@@ -1043,8 +898,6 @@ def add_comment(
     anchor_text: str,
     occurrence: int = 1,
     include_anchor_text: bool = True,
-    bookmark_jump: bool = False,
-    apps_script_id: str | None = None,
 ) -> dict:
     """
     Add a comment anchored to specific text in a Google Doc.
@@ -1135,24 +988,12 @@ def add_comment(
     # quotedFileContent provides the fallback display text.
     from googleapiclient.discovery import build
     drive = build("drive", "v3", credentials=_load_creds())
-    bookmark = None
-    if bookmark_jump:
-        bookmark = _create_bookmark_via_apps_script(
-            doc_id,
-            full_text[ft_start:ft_end],
-            occurrence=occurrence,
-            script_id=apps_script_id,
-        )
 
     rendered_comment = (
         _render_comment_with_anchor_text(comment, full_text[ft_start:ft_end])
         if include_anchor_text
         else comment
     )
-    if bookmark is not None:
-        rendered_comment = (
-            f"{rendered_comment}\n\nJump: {_build_bookmark_jump_url(doc_id, bookmark['bookmark_id'])}"
-        )
     comment_result = drive.comments().create(
         fileId=doc_id,
         body={
@@ -1173,13 +1014,6 @@ def add_comment(
         "at_index": doc_start,
         "named_range_id": named_range_id,
         "comment_content": rendered_comment,
-        "bookmark_id": bookmark["bookmark_id"] if bookmark is not None else None,
-        "bookmark_url": (
-            _build_bookmark_jump_url(doc_id, bookmark["bookmark_id"])
-            if bookmark is not None
-            else None
-        ),
-        "apps_script_id": bookmark["script_id"] if bookmark is not None else None,
     }
 
 
@@ -1256,15 +1090,6 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not append the anchored text excerpt into the comment body",
     )
-    ac.add_argument(
-        "--bookmark-jump",
-        action="store_true",
-        help="Create an Apps Script bookmark and append a #bookmark jump URL into the comment body",
-    )
-    ac.add_argument(
-        "--apps-script-id",
-        help=f"Override {APPS_SCRIPT_ID_ENV_VAR} for bookmark-jump mode",
-    )
 
     return p
 
@@ -1299,8 +1124,6 @@ def main():
                 args.anchor,
                 args.occurrence,
                 include_anchor_text=not args.no_include_anchor_text,
-                bookmark_jump=args.bookmark_jump,
-                apps_script_id=args.apps_script_id,
             )
         else:
             parser.print_help()

@@ -262,7 +262,6 @@ def docs_add_comment(
     anchor_text: str,
     occurrence: int = 1,
     include_anchor_text: bool = True,
-    bookmark_jump: bool = False,
 ) -> str:
     """
     Add a comment anchored to specific text in a Google Doc.
@@ -272,18 +271,9 @@ def docs_add_comment(
     rather than a proper inline comment highlight. The comments ARE readable via
     docs_read_comments and the Docs 💬 panel.
 
-    The next path to investigate is Apps Script automation. The OAuth token must
-    include the script.* scopes, and the Google account must also have the Apps
-    Script API enabled at https://script.google.com/home/usersettings before
-    remote Apps Script project creation/execution will work.
-
     By default the tool also appends the matched anchor text into the comment
     body so the user can understand what was targeted even though the Docs UI
     does not render a proper inline highlight with the current API path.
-
-    When bookmark_jump=True, the tool also uses a persistent Apps Script bridge
-    (configured via GOOGLE_DOCS_MCP_APPS_SCRIPT_ID) to create a bookmark at the
-    target text, then appends a #bookmark jump URL into the comment body.
 
     Args:
         doc_id:      Google Doc ID (from the URL: /document/d/{DOC_ID}/edit)
@@ -294,9 +284,6 @@ def docs_add_comment(
                      Use 2, 3, etc. if the text appears multiple times.
         include_anchor_text: If True (default), append the matched anchor text
                      excerpt into the comment body for human readability.
-        bookmark_jump: If True, create an Apps Script bookmark and append a
-                     jump URL into the comment body. Requires the Apps Script
-                     bridge env var setup documented in the README.
 
     Returns:
         JSON with: ok, comment_id, anchored_to (matched text), at_index, named_range_id
@@ -307,7 +294,6 @@ def docs_add_comment(
         anchor_text,
         occurrence,
         include_anchor_text=include_anchor_text,
-        bookmark_jump=bookmark_jump,
     )
     return json.dumps(result, indent=2)
 

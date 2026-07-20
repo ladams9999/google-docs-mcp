@@ -21,7 +21,6 @@ Get credentials.json:
 Required APIs to enable in your project:
     - Google Docs API
     - Google Drive API
-    - Google Apps Script API
 """
 
 import argparse
@@ -41,13 +40,6 @@ SCOPES = [
     # Core
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/drive.readonly",
-    # Comments
-    "https://www.googleapis.com/auth/drive.file",
-    # Apps Script (required for inline-anchored comments)
-    "https://www.googleapis.com/auth/script.projects",
-    "https://www.googleapis.com/auth/script.deployments",
-    "https://www.googleapis.com/auth/script.processes",
     # Identity
     "openid",
     "email",
@@ -330,7 +322,7 @@ Examples:
     out_path = Path(args.out).expanduser()
 
     print(f"Token will be saved to: {out_path}")
-    print(f"Scopes: docs, drive, appscript (for inline comments)")
+    print("Scopes: docs, drive, identity")
 
     # Run the appropriate flow
     if args.code:
