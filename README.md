@@ -4,6 +4,10 @@
 
 An MCP server that makes Google Docs actually usable for LLMs. **Standalone** — no other tools required beyond a Google Cloud OAuth app.
 
+Attribution:
+- This repository is maintained as a fork at `https://github.com/ladams9999/google-docs-mcp`.
+- Original project: `https://github.com/dbuxton/google-docs-mcp` by David Buxton.
+
 Compatibility note: the repo, package, CLI, env vars, and default token path now use `google-docs-mcp`. Backward-compatible `google-drive-mcp` command and env-var aliases are still accepted so existing setups do not break immediately.
 
 Indexing note: when the MCP reads document content before planning index-based edits, it requests `suggestionsViewMode=SUGGESTIONS_INLINE`. That keeps returned indices aligned for later `documents.batchUpdate` calls when the doc contains suggestions.
@@ -68,7 +72,7 @@ If dependencies are changed in `pyproject.toml`, regenerate and commit `uv.lock`
 ### 1. Run directly from GitHub
 
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp google-docs-mcp --help
+uvx --from git+https://github.com/ladams9999/google-docs-mcp google-docs-mcp --help
 ```
 
 That command downloads the package, creates an isolated environment, installs dependencies, and runs the `google-docs-mcp` entry point.
@@ -78,14 +82,14 @@ No PyPI release is required. `uvx` can execute the tool straight from the GitHub
 For reproducible runs, pin to an immutable commit ref:
 
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp@<commit-sha> google-docs-mcp --help
+uvx --from git+https://github.com/ladams9999/google-docs-mcp@<commit-sha> google-docs-mcp --help
 ```
 
 If you prefer a persistent local install instead of `uvx`, use:
 
 ```bash
-uv tool install --from git+https://github.com/dbuxton/google-docs-mcp google-docs-mcp
-uv tool install --from git+https://github.com/dbuxton/google-docs-mcp google-docs-mcp-auth
+uv tool install --from git+https://github.com/ladams9999/google-docs-mcp google-docs-mcp
+uv tool install --from git+https://github.com/ladams9999/google-docs-mcp google-docs-mcp-auth
 ```
 
 For reproducible local dependency resolution, install with the pinned constraints file:
@@ -110,7 +114,7 @@ python -m pip install -r requirements.txt -c constraints.txt
 
 **Normal — browser opens automatically:**
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp \
+uvx --from git+https://github.com/ladams9999/google-docs-mcp \
   google-docs-mcp-auth --credentials ~/credentials.json
 ```
 
@@ -119,13 +123,13 @@ uvx --from git+https://github.com/dbuxton/google-docs-mcp \
 export GOOGLE_DOCS_MCP_CLIENT_ID="your-google-client-id"
 export GOOGLE_DOCS_MCP_CLIENT_SECRET="your-google-client-secret"
 
-uvx --from git+https://github.com/dbuxton/google-docs-mcp \
+uvx --from git+https://github.com/ladams9999/google-docs-mcp \
   google-docs-mcp-auth
 ```
 
 **Headless / remote server — no browser on device:**
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp \
+uvx --from git+https://github.com/ladams9999/google-docs-mcp \
   google-docs-mcp-auth --credentials ~/credentials.json --headless
 # Prints a URL → open on any device (phone, laptop, etc.)
 # Paste the full redirect URL back into the terminal
@@ -133,7 +137,7 @@ uvx --from git+https://github.com/dbuxton/google-docs-mcp \
 
 **Already have an auth code:**
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp \
+uvx --from git+https://github.com/ladams9999/google-docs-mcp \
   google-docs-mcp-auth --credentials ~/credentials.json --code "4/0Afr..."
 ```
 
@@ -147,13 +151,85 @@ Token is saved to `~/.google-docs-mcp/token.json` by default. Override with `--o
 
 ### 4. Configure your MCP client
 
+### VS Code
+
+Create `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "google-docs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/ladams9999/google-docs-mcp@<commit-sha>",
+        "google-docs-mcp"
+      ],
+      "env": {
+        "GOOGLE_DOCS_MCP_TOKEN": "${workspaceFolder}/.secrets/google-docs-token.json"
+      }
+    }
+  }
+}
+```
+
+### Claude CLI (Claude Code)
+
+Project-scoped config in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "google-docs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/ladams9999/google-docs-mcp@<commit-sha>",
+        "google-docs-mcp"
+      ],
+      "env": {
+        "GOOGLE_DOCS_MCP_TOKEN": "~/.google-docs-mcp/token.json"
+      }
+    }
+  }
+}
+```
+
+User-level alternative (`~/.claude.json`) follows the same `mcpServers` object under the project path.
+
+### Copilot CLI
+
+Workspace MCP config example (`mcp-config.json`):
+
+```json
+{
+  "mcpServers": {
+    "google-docs": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/ladams9999/google-docs-mcp@<commit-sha>",
+        "google-docs-mcp"
+      ],
+      "env": {
+        "GOOGLE_DOCS_MCP_TOKEN": "${GOOGLE_DOCS_MCP_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Then register the config with Copilot CLI MCP commands for your installed version.
+
 **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 ```json
 {
   "mcpServers": {
     "google-docs": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/dbuxton/google-docs-mcp", "google-docs-mcp"],
+      "args": ["--from", "git+https://github.com/ladams9999/google-docs-mcp", "google-docs-mcp"],
       "env": {
         "GOOGLE_DOCS_MCP_TOKEN": "/Users/you/.google-docs-mcp/token.json"
       }
@@ -169,7 +245,7 @@ Token is saved to `~/.google-docs-mcp/token.json` by default. Override with `--o
     "servers": {
       "google-docs": {
         "command": "uvx",
-        "args": ["--from", "git+https://github.com/dbuxton/google-docs-mcp", "google-docs-mcp"],
+        "args": ["--from", "git+https://github.com/ladams9999/google-docs-mcp", "google-docs-mcp"],
         "env": {
           "GOOGLE_DOCS_MCP_TOKEN": "~/.google-docs-mcp/token.json"
         }
