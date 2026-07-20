@@ -36,10 +36,10 @@ That command downloads the package, creates an isolated environment, installs de
 
 No PyPI release is required. `uvx` can execute the tool straight from the GitHub repository.
 
-To pin to a branch, tag, or commit, add a ref to the URL:
+For reproducible runs, pin to an immutable commit ref:
 
 ```bash
-uvx --from git+https://github.com/dbuxton/google-docs-mcp@main google-docs-mcp --help
+uvx --from git+https://github.com/dbuxton/google-docs-mcp@<commit-sha> google-docs-mcp --help
 ```
 
 If you prefer a persistent local install instead of `uvx`, use:
@@ -47,6 +47,12 @@ If you prefer a persistent local install instead of `uvx`, use:
 ```bash
 uv tool install --from git+https://github.com/dbuxton/google-docs-mcp google-docs-mcp
 uv tool install --from git+https://github.com/dbuxton/google-docs-mcp google-docs-mcp-auth
+```
+
+For reproducible local dependency resolution, install with the pinned constraints file:
+
+```bash
+python -m pip install -r requirements.txt -c constraints.txt
 ```
 
 ### 2. Create a Google Cloud OAuth app

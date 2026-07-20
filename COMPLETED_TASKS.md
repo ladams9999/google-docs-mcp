@@ -8,3 +8,4 @@
 - Fix 3: Escaped user-provided Drive list query text to prevent query-string injection behavior.
 - Fix 4: Reduced default OAuth scopes and removed integrated Apps Script bookmark-bridge execution from default comment workflow.
 - Fix 5: Aligned comment-anchor parsing with plain-string and JSON anchor formats and added regression tests for parser behavior.
+- Fix 6: Added pinned dependency constraints and reproducible install guidance, including immutable commit pinning in runtime examples.
