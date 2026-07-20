@@ -471,7 +471,8 @@ def docs_list(query: str = "", limit: int = 20) -> str:
 
     q = 'mimeType="application/vnd.google-apps.document" and trashed=false'
     if query:
-        q += f' and fullText contains "{query}"'
+        escaped = query.replace("\\", "\\\\").replace('"', '\\"')
+        q += f' and fullText contains "{escaped}"'
 
     results = drive.files().list(
         q=q,
