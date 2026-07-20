@@ -27,6 +27,7 @@ Required APIs to enable in your project:
 import argparse
 import json
 import os
+import secrets
 import sys
 import threading
 import urllib.parse
@@ -147,10 +148,19 @@ def save_token(token_response: dict, client_id: str, client_secret: str, out_pat
 class _CallbackHandler(BaseHTTPRequestHandler):
     code = None
     error = None
+    expected_state = None
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         params = dict(urllib.parse.parse_qsl(parsed.query))
+        # CSRF protection: callback state must match the generated auth state.
+        if _CallbackHandler.expected_state and params.get("state") != _CallbackHandler.expected_state:
+            _CallbackHandler.error = "state mismatch"
+            self.send_response(400)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(b"<html><body>Error: state mismatch.</body></html>")
+            return
         if "code" in params:
             _CallbackHandler.code = params["code"]
             self.send_response(200)
@@ -176,8 +186,10 @@ class _CallbackHandler(BaseHTTPRequestHandler):
 def run_local_flow(client_id: str, client_secret: str, out_path: Path):
     """Start local server, open browser, wait for callback."""
     import webbrowser
+    state = secrets.token_urlsafe(24)
+    _CallbackHandler.expected_state = state
     server = HTTPServer(("127.0.0.1", REDIRECT_PORT), _CallbackHandler)
-    auth_url = build_auth_url(client_id)
+    auth_url = build_auth_url(client_id, state=state)
 
     print(f"\nOpening browser for Google authorisation...")
     print(f"If it doesn't open automatically, visit:\n\n  {auth_url}\n")
@@ -199,7 +211,8 @@ def run_local_flow(client_id: str, client_secret: str, out_path: Path):
 
 def run_headless_flow(client_id: str, client_secret: str, out_path: Path):
     """Print URL, wait for user to paste the redirect URL back."""
-    auth_url = build_auth_url(client_id)
+    state = secrets.token_urlsafe(24)
+    auth_url = build_auth_url(client_id, state=state)
 
     print("\n" + "=" * 60)
     print("STEP 1: Open this URL in any browser (phone, laptop, etc.):")
@@ -215,6 +228,7 @@ def run_headless_flow(client_id: str, client_secret: str, out_path: Path):
     parsed = urllib.parse.urlparse(redirect_url)
     params = dict(urllib.parse.parse_qsl(parsed.query))
     code = params.get("code")
+    returned_state = params.get("state")
     if not code:
         # Maybe they pasted just the code
         if redirect_url.startswith("4/"):
@@ -222,6 +236,9 @@ def run_headless_flow(client_id: str, client_secret: str, out_path: Path):
         else:
             print("\nCould not extract auth code from URL.", file=sys.stderr)
             sys.exit(1)
+    elif returned_state != state:
+        print("\nState mismatch in redirect URL.", file=sys.stderr)
+        sys.exit(1)
 
     tokens = exchange_code(code, client_id, client_secret)
     email = save_token(tokens, client_id, client_secret, out_path)
