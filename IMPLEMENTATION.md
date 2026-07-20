@@ -11,8 +11,6 @@
 	- Contains token loading and credential refresh behavior.
 - `auth_setup.py`
 	- Performs OAuth setup, exchanges auth codes, and writes token material to local token file.
-- `appscript_probe.py`
-	- Experimental Apps Script probe utility for comment API capability checks.
 
 ## Auth and Credential Flow
 
@@ -52,3 +50,12 @@
 - `uv.lock` is committed for reproducible dependency resolution.
 - Use `uv sync` to provision `.venv`.
 - Use `uv run ...` for commands (server, auth setup, tests).
+
+## CI
+
+- Workflow file: `.github/workflows/ci.yml`.
+- CI gates currently enforce:
+	- lockfile consistency (`uv lock --check`),
+	- frozen dependency sync (`uv sync --frozen`),
+	- unit tests (`uv run python -m unittest discover -s tests -p "test_*.py"`),
+	- compile pass (`uv run python -m compileall -q .`).

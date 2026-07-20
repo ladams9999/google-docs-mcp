@@ -43,6 +43,28 @@ uv run python server.py
 uv run python -m unittest discover -s tests -p "test_*.py"
 ```
 
+## CI workflow
+
+GitHub Actions workflow is defined at `.github/workflows/ci.yml`.
+
+It provides:
+- lockfile drift detection via `uv lock --check`
+- deterministic environment provisioning via `uv sync --frozen`
+- automated test execution via `uv run python -m unittest discover -s tests -p "test_*.py"`
+- basic compile validation via `uv run python -m compileall -q .`
+
+## Contributor workflow
+
+Preferred local workflow:
+
+```bash
+uv lock
+uv sync
+uv run python -m unittest discover -s tests -p "test_*.py"
+```
+
+If dependencies are changed in `pyproject.toml`, regenerate and commit `uv.lock` in the same change.
+
 ### 1. Run directly from GitHub
 
 ```bash

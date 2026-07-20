@@ -2,6 +2,20 @@
 
 Reviewed on 2026-07-20.
 
+## Status Update (Post-Remediation)
+
+The original findings in this document were used as a baseline hardening backlog.
+As of 2026-07-20, fixes have been implemented for Findings 1 through 9, including:
+- removal of insecure legacy gog token fallback paths,
+- OAuth state validation,
+- list query escaping,
+- scope reduction and removal of integrated Apps Script bookmark bridge,
+- anchor parsing alignment with regression tests,
+- dependency lock/constraints strategy,
+- immutable-commit guidance and CI lock/test gates.
+
+This analysis is retained as an audit record of the initial review and remediation plan.
+
 ## Scope
 
 Files reviewed:

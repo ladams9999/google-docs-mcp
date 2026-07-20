@@ -14,3 +14,4 @@ Refer to `PROJECT_PLAN.md` for current goals and near-term priorities.
 - **PROJECT_PLAN.md**: Goals, roadmap, and sequencing.
 - **SECURITY_ANALYSIS.md**: Security findings and remediation order.
 - **README.md**: End-user setup and tool usage guide.
+- **.github/workflows/ci.yml**: CI checks for lockfile, sync, tests, and compile validation.

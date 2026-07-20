@@ -11,26 +11,32 @@ google-docs-mcp provides MCP-accessible, in-place Google Docs editing and commen
 
 ## Phase 1: Security Hardening
 
-- Remove hardcoded identity and insecure token cache fallback behavior.
-- Add OAuth state validation for local and headless auth flows.
-- Escape or sanitize user-provided list query terms before Drive query composition.
-- Review and reduce default OAuth scopes to least privilege practical baseline.
+- Completed: removed hardcoded identity and insecure token cache fallback behavior.
+- Completed: added OAuth state validation for local and headless auth flows.
+- Completed: escaped user-provided list query terms before Drive query composition.
+- Completed: reduced default OAuth scopes to least privilege practical baseline.
 
 ## Phase 2: Functional Correctness and Consistency
 
-- Align comment anchor read/write format handling.
-- Add regression tests around comment anchoring and list query behavior.
-- Verify docs examples match current response payload keys (`plain_text` vs `full_text`).
+- Completed: aligned comment anchor read/write format handling.
+- Completed: added regression tests around comment anchor parsing behavior.
+- Completed: verified docs examples match current response payload keys (`plain_text`).
 
 ## Phase 3: Supply-Chain and Release Hygiene
 
-- Add pinned runtime guidance (immutable commit refs) in README examples.
-- Introduce dependency lock/constraints strategy for repeatable installs.
-- Define release checklist including security and docs verification.
+- Completed: added pinned runtime guidance (immutable commit refs) in README examples.
+- Completed: introduced lockfile + constraints strategy for repeatable installs.
+- Completed: added CI workflow for lock checks, frozen sync, tests, and compile pass.
+
+## Phase 4: Maintenance and Expansion
+
+- Add broader automated tests for auth flow edge cases and docs operations.
+- Add release checklist section (tagging, changelog, smoke tests).
+- Consider optional lint/type-check stage in CI once tooling choices are finalized.
 
 ## Success Criteria
 
-- All Phase 1 findings resolved with tests or explicit rationale.
+- Security findings from the initial analysis are remediated in code and docs.
+- CI enforces lock consistency and baseline quality checks on push and PR.
 - README quick-start uses stable, auditable install guidance.
-- Pending task list remains under active triage with completed items recorded.
 
