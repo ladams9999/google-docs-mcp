@@ -8,6 +8,14 @@ Compatibility note: the repo, package, CLI, env vars, and default token path now
 
 Indexing note: when the MCP reads document content before planning index-based edits, it requests `suggestionsViewMode=SUGGESTIONS_INLINE`. That keeps returned indices aligned for later `documents.batchUpdate` calls when the doc contains suggestions.
 
+## Project docs
+
+- `PROJECT_PLAN.md`: current goals, phases, and success criteria.
+- `IMPLEMENTATION.md`: implementation details and architecture notes.
+- `PENDING_TASKS.md`: prioritized open tasks.
+- `COMPLETED_TASKS.md`: completed milestones.
+- `SECURITY_ANALYSIS.md`: current security findings and remediation ordering.
+
 ## Why
 
 The Google Docs API uses **character indices** for every edit. LLMs are bad at counting characters. Everyone ends up deleting and rewriting entire documents, which destroys version history, comments, and collaborator attribution.
@@ -197,7 +205,7 @@ Returns:
     {"text": "Introduction", "style": "HEADING_1", "start": 0, "end": 13},
     {"text": "This is the body.", "style": "NORMAL_TEXT", "start": 13, "end": 31}
   ],
-  "full_text": "Introduction\nThis is the body."
+  "plain_text": "Introduction\nThis is the body."
 }
 ```
 
