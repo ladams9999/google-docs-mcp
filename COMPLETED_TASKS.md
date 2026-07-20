@@ -7,3 +7,4 @@
 - Fix 2: Added OAuth state generation and validation for both local callback and headless redirect flows.
 - Fix 3: Escaped user-provided Drive list query text to prevent query-string injection behavior.
 - Fix 4: Reduced default OAuth scopes and removed integrated Apps Script bookmark-bridge execution from default comment workflow.
+- Fix 5: Aligned comment-anchor parsing with plain-string and JSON anchor formats and added regression tests for parser behavior.

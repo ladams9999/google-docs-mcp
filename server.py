@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastmcp import FastMCP
 import docs_edit
+from anchor_utils import extract_named_range_id
 
 logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
 
@@ -399,7 +400,6 @@ def docs_read_comments(doc_id: str, include_resolved: bool = False) -> str:
         anchored_to (the named range id if anchored), created_time
     """
     from googleapiclient.discovery import build
-    import json as _json
 
     creds = docs_edit._load_creds()
     drive = build("drive", "v3", credentials=creds)
@@ -415,15 +415,7 @@ def docs_read_comments(doc_id: str, include_resolved: bool = False) -> str:
         if not include_resolved and (c.get("deleted") or c.get("resolved")):
             continue
         anchor = c.get("anchor") or ""
-        named_range_id = None
-        if anchor:
-            try:
-                a = _json.loads(anchor)
-                for part in a.get("a", []):
-                    if part.get("t") == "r":
-                        named_range_id = part.get("v")
-            except Exception:
-                pass
+        named_range_id = extract_named_range_id(anchor)
         results.append({
             "id": c["id"],
             "content": c.get("content", ""),
