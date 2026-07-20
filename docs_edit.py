@@ -22,10 +22,8 @@ Rich mode is ON by default and supports a small markdown-like subset:
 
 Auth (in priority order):
     1. GOOGLE_DOCS_MCP_TOKEN env var  → path to standalone token JSON
-    2. GOOGLE_DOCS_TOKEN_FILE env var → legacy gog-exported token JSON
+    2. GOOGLE_DOCS_TOKEN_FILE env var → legacy token JSON path alias
     3. Default standalone path        → ~/.google-docs-mcp/token.json
-    4. GOG_KEYRING_PASSWORD env var   → auto-export from gog
-    5. Cached gog token               → /tmp/docs_edit_token_cache.json
 
 Legacy GOOGLE_DRIVE_MCP_* env var aliases still work.
 
@@ -41,9 +39,7 @@ import json
 import logging
 import os
 import re
-import subprocess
 import sys
-import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -73,33 +69,6 @@ APPS_SCRIPT_ID_ENV_ALIASES = (APPS_SCRIPT_ID_ENV_VAR, "GOOGLE_DRIVE_MCP_APPS_SCR
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SCRIPT_API_BASE = "https://script.googleapis.com/v1"
 
-# Gog fallback paths (backward compat)
-GOG_CREDENTIALS_PATH = Path("/config/gogcli/credentials.json")
-GOG_TOKEN_CACHE = Path("/tmp/docs_edit_token_cache.json")
-
-
-def _export_gog_token(email: str = "david@harriethq.com") -> dict:
-    """Export token from gog keyring using GOG_KEYRING_PASSWORD env var."""
-    password = os.environ.get("GOG_KEYRING_PASSWORD")
-    if not password:
-        raise RuntimeError("GOG_KEYRING_PASSWORD not set")
-    env = {**os.environ, "GOG_KEYRING_PASSWORD": password}
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        tmp = f.name
-    try:
-        result = subprocess.run(
-            ["gog", "auth", "tokens", "export", email, "--out", tmp, "--overwrite", "-y"],
-            env=env, capture_output=True, text=True,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"gog token export failed: {result.stderr}")
-        return json.loads(Path(tmp).read_text())
-    finally:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-
 
 def _first_env(*names: str) -> str | None:
     for name in names:
@@ -114,11 +83,9 @@ def _load_token() -> dict:
     Load token data. Priority:
       1. GOOGLE_DOCS_MCP_TOKEN env var   (standalone auth_setup.py output)
       2. GOOGLE_DRIVE_MCP_TOKEN env var  (backward-compatible alias)
-      3. GOOGLE_DOCS_TOKEN_FILE env var  (legacy / gog compat)
+            3. GOOGLE_DOCS_TOKEN_FILE env var  (legacy token path alias)
       4. ~/.google-docs-mcp/token.json   (standalone default location)
       5. ~/.google-drive-mcp/token.json  (backward-compatible fallback)
-      6. GOG_KEYRING_PASSWORD auto-export (gog compat)
-      7. Cached gog token
     """
     # 1. Standalone env vars
     token_file = _first_env(*TOKEN_ENV_ALIASES)
@@ -134,19 +101,6 @@ def _load_token() -> dict:
     for token_path in STANDALONE_TOKEN_PATHS:
         if token_path.exists():
             return json.loads(token_path.read_text())
-
-    # 4. Gog auto-export
-    try:
-        token = _export_gog_token()
-        GOG_TOKEN_CACHE.write_text(json.dumps(token))
-        return token
-    except RuntimeError as e:
-        log.warning("Gog auto-export failed: %s", e)
-
-    # 5. Gog cache
-    if GOG_TOKEN_CACHE.exists():
-        log.info("Using cached gog token")
-        return json.loads(GOG_TOKEN_CACHE.read_text())
 
     raise RuntimeError(
         "No Google credentials found.\n"
@@ -172,12 +126,6 @@ def _load_creds():
     # Environment override allows using external client credentials instead of a credentials.json file.
     client_id = client_id or _first_env(*CLIENT_ID_ENV_ALIASES)
     client_secret = client_secret or _first_env(*CLIENT_SECRET_ENV_ALIASES)
-
-    # Gog compat: read from separate credentials.json if not embedded
-    if not client_id and GOG_CREDENTIALS_PATH.exists():
-        gog_creds = json.loads(GOG_CREDENTIALS_PATH.read_text())
-        client_id = gog_creds.get("client_id")
-        client_secret = gog_creds.get("client_secret")
 
     if not client_id or not client_secret:
         raise RuntimeError(

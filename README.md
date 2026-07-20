@@ -471,7 +471,6 @@ docs_delete_comment(doc_id="...", comment_id="AAAB1iPyaUY")
 | `GOOGLE_DOCS_MCP_CLIENT_SECRET` | Optional OAuth client secret override |
 | `GOOGLE_DOCS_MCP_APPS_SCRIPT_ID` | Apps Script bridge project ID for `bookmark_jump=true` |
 | `GOOGLE_DOCS_TOKEN_FILE` | Legacy alias |
-| `GOG_KEYRING_PASSWORD` | Auto-export from gog CLI (for personal/OpenClaw use) |
 
 Legacy `GOOGLE_DRIVE_MCP_*` env var aliases still work for backward compatibility.
 
