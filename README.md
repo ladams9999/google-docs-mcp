@@ -26,6 +26,23 @@ This server uses the same abstraction as code editors: **search by text, not by 
 
 ## Quick start
 
+### 0. Local development with uv (recommended)
+
+From the repository root:
+
+```bash
+uv lock
+uv sync
+```
+
+Run commands through the project environment:
+
+```bash
+uv run python auth_setup.py --help
+uv run python server.py
+uv run python -m unittest discover -s tests -p "test_*.py"
+```
+
 ### 1. Run directly from GitHub
 
 ```bash

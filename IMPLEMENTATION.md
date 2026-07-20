@@ -45,3 +45,10 @@
 - Keep `PROJECT_PLAN.md` focused on roadmap and priorities.
 - Keep `PENDING_TASKS.md` granular and execution-ready.
 - Keep `COMPLETED_TASKS.md` concise and dated when possible.
+
+## Environment and Tooling
+
+- Primary local workflow uses `uv`.
+- `uv.lock` is committed for reproducible dependency resolution.
+- Use `uv sync` to provision `.venv`.
+- Use `uv run ...` for commands (server, auth setup, tests).
