@@ -11,3 +11,5 @@
 - Fix 6: Added pinned dependency constraints and reproducible install guidance, including immutable commit pinning in runtime examples.
 - Added uv-first project setup with committed lockfile (`uv.lock`) and documented `uv run` workflow.
 - Added GitHub Actions CI workflow enforcing `uv lock --check`, `uv sync --frozen`, unit tests, and compile checks.
+- Implemented request-level multi-identity support via optional absolute `token_file` override across MCP tools and docs_edit CLI.
+- Added regression tests for token-file override behavior and default-token fallback.
