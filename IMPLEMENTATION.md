@@ -17,6 +17,8 @@
 - Primary token path is `~/.google-docs-mcp/token.json`.
 - Token loading is driven by env vars and fallback paths in `docs_edit.py`.
 - OAuth client credentials may come from token payload or env var overrides.
+- Request-level override is supported via optional `token_file` on tools.
+- `token_file` must be an absolute path and is used only for that request.
 
 ## Current Security Notes
 
@@ -50,6 +52,14 @@
 - `uv.lock` is committed for reproducible dependency resolution.
 - Use `uv sync` to provision `.venv`.
 - Use `uv run ...` for commands (server, auth setup, tests).
+
+## Multi-Account Token Selection
+
+- MCP tools in `server.py` now accept optional `token_file`.
+- `docs_edit.py` resolves token sources in this order:
+	1. request `token_file` override (absolute path required),
+	2. environment/default token behavior.
+- This allows one server process to serve multiple identities using distinct token files.
 
 ## CI
 

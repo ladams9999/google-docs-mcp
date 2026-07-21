@@ -71,7 +71,17 @@ def _first_env(*names: str) -> str | None:
     return None
 
 
-def _load_token() -> dict:
+def _resolve_token_file_override(token_file_override: str | None) -> Path | None:
+    if not token_file_override:
+        return None
+    expanded = os.path.expandvars(os.path.expanduser(token_file_override.strip()))
+    token_path = Path(expanded)
+    if not token_path.is_absolute():
+        raise ValueError("token_file override must be an absolute path")
+    return token_path
+
+
+def _load_token(token_file_override: str | None = None) -> dict:
     """
     Load token data. Priority:
       1. GOOGLE_DOCS_MCP_TOKEN env var   (standalone auth_setup.py output)
@@ -80,6 +90,11 @@ def _load_token() -> dict:
       4. ~/.google-docs-mcp/token.json   (standalone default location)
       5. ~/.google-drive-mcp/token.json  (backward-compatible fallback)
     """
+    # 0. Per-request absolute token file override
+    override_path = _resolve_token_file_override(token_file_override)
+    if override_path is not None:
+        return json.loads(override_path.read_text())
+
     # 1. Standalone env vars
     token_file = _first_env(*TOKEN_ENV_ALIASES)
     if token_file:
@@ -103,12 +118,12 @@ def _load_token() -> dict:
     )
 
 
-def _load_creds():
+def _load_creds(token_file_override: str | None = None):
     """Return refreshed google.oauth2.credentials.Credentials."""
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
 
-    token_data = _load_token()
+    token_data = _load_token(token_file_override=token_file_override)
 
     # Self-contained token — auth_setup.py embeds client_id / client_secret directly
     # (also handle legacy _client_id / _client_secret with underscore prefix)
@@ -141,10 +156,10 @@ def _load_creds():
     return creds
 
 
-def _get_service(api: str = "docs", version: str = "v1"):
+def _get_service(api: str = "docs", version: str = "v1", token_file_override: str | None = None):
     """Build a Google API service client."""
     from googleapiclient.discovery import build
-    return build(api, version, credentials=_load_creds())
+    return build(api, version, credentials=_load_creds(token_file_override=token_file_override))
 
 
 SUGGESTIONS_VIEW_MODE = "SUGGESTIONS_INLINE"
@@ -485,7 +500,7 @@ def _render_comment_with_anchor_text(comment: str, anchor_text: str) -> str:
 # Core operations
 # ---------------------------------------------------------------------------
 
-def get(doc_id: str) -> dict:
+def get(doc_id: str, token_file_override: str | None = None) -> dict:
     """
     Fetch a Google Doc and return structured representation.
 
@@ -498,7 +513,7 @@ def get(doc_id: str) -> dict:
           "plain_text": "full document text..."
         }
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
     paragraphs = _extract_paragraphs(doc)
     return {
@@ -522,6 +537,7 @@ def search_replace(
     replace: str,
     occurrence: int = 1,
     regex: bool = False,
+    token_file_override: str | None = None,
 ) -> dict:
     """
     Find text in a document and replace a specific occurrence.
@@ -536,7 +552,7 @@ def search_replace(
     Returns:
         {"ok": True, "replaced": "old text", "at_index": 45, "occurrences_found": 3}
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
 
     # Replace-all: use the native replaceAllText API (fast, atomic)
     if occurrence == 0 and not regex:
@@ -630,13 +646,19 @@ def search_replace(
     }
 
 
-def insert_after(doc_id: str, anchor: str, text: str, rich: bool = True) -> dict:
+def insert_after(
+    doc_id: str,
+    anchor: str,
+    text: str,
+    rich: bool = True,
+    token_file_override: str | None = None,
+) -> dict:
     """
     Insert text as a new paragraph after the paragraph containing `anchor`.
 
     The inserted text becomes a separate paragraph (newline appended automatically).
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
     paragraphs = _extract_paragraphs(doc)
 
@@ -672,11 +694,17 @@ def insert_after(doc_id: str, anchor: str, text: str, rich: bool = True) -> dict
     }
 
 
-def insert_before(doc_id: str, anchor: str, text: str, rich: bool = True) -> dict:
+def insert_before(
+    doc_id: str,
+    anchor: str,
+    text: str,
+    rich: bool = True,
+    token_file_override: str | None = None,
+) -> dict:
     """
     Insert text as a new paragraph before the paragraph containing `anchor`.
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
     paragraphs = _extract_paragraphs(doc)
 
@@ -712,14 +740,18 @@ def insert_before(doc_id: str, anchor: str, text: str, rich: bool = True) -> dic
     }
 
 
-def delete_paragraph(doc_id: str, anchor: str) -> dict:
+def delete_paragraph(
+    doc_id: str,
+    anchor: str,
+    token_file_override: str | None = None,
+) -> dict:
     """
     Delete the paragraph(s) containing `anchor` text.
 
     Deletes ALL paragraphs matching the anchor (case-insensitive substring).
     Returns count of deleted paragraphs.
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
     paragraphs = _extract_paragraphs(doc)
 
@@ -753,11 +785,16 @@ def delete_paragraph(doc_id: str, anchor: str) -> dict:
     }
 
 
-def append(doc_id: str, text: str, rich: bool = True) -> dict:
+def append(
+    doc_id: str,
+    text: str,
+    rich: bool = True,
+    token_file_override: str | None = None,
+) -> dict:
     """
     Append text as a new paragraph at the end of the document.
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
 
     # Find the last content index (end of the body, before the body's closing)
@@ -790,7 +827,11 @@ def append(doc_id: str, text: str, rich: bool = True) -> dict:
     }
 
 
-def batch_replace(doc_id: str, replacements: list[dict]) -> dict:
+def batch_replace(
+    doc_id: str,
+    replacements: list[dict],
+    token_file_override: str | None = None,
+) -> dict:
     """
     Apply multiple find→replace operations atomically (all or nothing).
 
@@ -805,7 +846,7 @@ def batch_replace(doc_id: str, replacements: list[dict]) -> dict:
     Returns:
         {"ok": True, "applied": N, "changes": [...]}
     """
-    service = _get_service("docs", "v1")
+    service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(service, doc_id)
     paragraphs = _extract_paragraphs(doc)
     full_text, text_map = _build_full_text_map(paragraphs)
@@ -898,6 +939,7 @@ def add_comment(
     anchor_text: str,
     occurrence: int = 1,
     include_anchor_text: bool = True,
+    token_file_override: str | None = None,
 ) -> dict:
     """
     Add a comment anchored to specific text in a Google Doc.
@@ -928,7 +970,7 @@ def add_comment(
     """
     import uuid
 
-    docs_service = _get_service("docs", "v1")
+    docs_service = _get_service("docs", "v1", token_file_override=token_file_override)
     doc = _get_document(docs_service, doc_id)
     paragraphs = _extract_paragraphs(doc)
     full_text, text_map = _build_full_text_map(paragraphs)
@@ -987,7 +1029,7 @@ def add_comment(
     # (e.g. "kix.abc123") as a plain string — NOT a JSON object.
     # quotedFileContent provides the fallback display text.
     from googleapiclient.discovery import build
-    drive = build("drive", "v3", credentials=_load_creds())
+    drive = build("drive", "v3", credentials=_load_creds(token_file_override=token_file_override))
 
     rendered_comment = (
         _render_comment_with_anchor_text(comment, full_text[ft_start:ft_end])
@@ -1027,6 +1069,10 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("--json", action="store_true", help="Output JSON (default for scripting)")
+    p.add_argument(
+        "--token-file",
+        help="Absolute path to token file to use for this invocation (overrides env/default lookup)",
+    )
 
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -1101,22 +1147,52 @@ def main():
 
     try:
         if args.command == "get":
-            result = get(args.doc_id)
+            result = get(args.doc_id, token_file_override=args.token_file)
         elif args.command == "search_replace":
             result = search_replace(
-                args.doc_id, args.find, args.replace, args.occurrence, args.regex
+                args.doc_id,
+                args.find,
+                args.replace,
+                args.occurrence,
+                args.regex,
+                token_file_override=args.token_file,
             )
         elif args.command == "insert_after":
-            result = insert_after(args.doc_id, args.anchor, args.text, rich=args.rich)
+            result = insert_after(
+                args.doc_id,
+                args.anchor,
+                args.text,
+                rich=args.rich,
+                token_file_override=args.token_file,
+            )
         elif args.command == "insert_before":
-            result = insert_before(args.doc_id, args.anchor, args.text, rich=args.rich)
+            result = insert_before(
+                args.doc_id,
+                args.anchor,
+                args.text,
+                rich=args.rich,
+                token_file_override=args.token_file,
+            )
         elif args.command == "delete_paragraph":
-            result = delete_paragraph(args.doc_id, args.anchor)
+            result = delete_paragraph(
+                args.doc_id,
+                args.anchor,
+                token_file_override=args.token_file,
+            )
         elif args.command == "append":
-            result = append(args.doc_id, args.text, rich=args.rich)
+            result = append(
+                args.doc_id,
+                args.text,
+                rich=args.rich,
+                token_file_override=args.token_file,
+            )
         elif args.command == "batch_replace":
             replacements = json.loads(args.replacements)
-            result = batch_replace(args.doc_id, replacements)
+            result = batch_replace(
+                args.doc_id,
+                replacements,
+                token_file_override=args.token_file,
+            )
         elif args.command == "add_comment":
             result = add_comment(
                 args.doc_id,
@@ -1124,6 +1200,7 @@ def main():
                 args.anchor,
                 args.occurrence,
                 include_anchor_text=not args.no_include_anchor_text,
+                token_file_override=args.token_file,
             )
         else:
             parser.print_help()

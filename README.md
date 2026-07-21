@@ -69,6 +69,37 @@ uv run python -m unittest discover -s tests -p "test_*.py"
 
 If dependencies are changed in `pyproject.toml`, regenerate and commit `uv.lock` in the same change.
 
+## Multi-identity usage (single server)
+
+This server supports per-request token selection via optional `token_file` on tools.
+
+Behavior:
+- If `token_file` is provided, that token file is used for the request.
+- If not provided, default token resolution is used.
+
+Recommended pattern:
+- Store all identity token files in one Windows directory with distinct names.
+- Pass an absolute token path per request to select identity.
+
+Example token file paths:
+- `C:\Users\<you>\.google-docs-mcp\profiles\work.json`
+- `C:\Users\<you>\.google-docs-mcp\profiles\personal.json`
+- `C:\Users\<you>\.google-docs-mcp\profiles\wsl-identity.json`
+
+Token acquisition (repeat per identity):
+
+```bash
+uv run python auth_setup.py --credentials <path-to-credentials.json> --out C:\Users\<you>\.google-docs-mcp\profiles\work.json
+uv run python auth_setup.py --credentials <path-to-credentials.json> --out C:\Users\<you>\.google-docs-mcp\profiles\personal.json
+uv run python auth_setup.py --credentials <path-to-credentials.json> --out C:\Users\<you>\.google-docs-mcp\profiles\wsl-identity.json
+```
+
+CLI one-off override example:
+
+```bash
+uv run python docs_edit.py --token-file C:\Users\<you>\.google-docs-mcp\profiles\work.json get <DOC_ID>
+```
+
 ### 1. Run directly from GitHub
 
 ```bash
@@ -314,6 +345,8 @@ docs_list(query="board deck 2026", limit=5)
 ### Document editing
 
 All editing tools use **text anchors**, never character indices. The server finds the text and handles the indices internally.
+
+All MCP tools accept optional `token_file` to select identity per request.
 
 #### `docs_search_replace(doc_id, find, replace, occurrence, regex)`
 Find text in a document and replace a specific occurrence.

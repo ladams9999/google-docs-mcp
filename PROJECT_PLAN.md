@@ -33,6 +33,7 @@ google-docs-mcp provides MCP-accessible, in-place Google Docs editing and commen
 - Add broader automated tests for auth flow edge cases and docs operations.
 - Add release checklist section (tagging, changelog, smoke tests).
 - Consider optional lint/type-check stage in CI once tooling choices are finalized.
+- Implement and validate multi-identity request routing via per-request `token_file` override.
 
 ## Success Criteria
 

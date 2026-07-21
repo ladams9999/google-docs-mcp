@@ -88,7 +88,7 @@ All edits preserve version history. Use short, distinctive anchor_text
 
 
 @mcp.tool
-def docs_get(doc_id: str) -> str:
+def docs_get(doc_id: str, token_file: str = "") -> str:
     """
     Read a Google Doc and return its structure as JSON.
 
@@ -98,7 +98,7 @@ def docs_get(doc_id: str) -> str:
     Args:
         doc_id: Google Doc ID (from the URL: /document/d/{DOC_ID}/edit)
     """
-    result = docs_edit.get(doc_id)
+    result = docs_edit.get(doc_id, token_file_override=token_file or None)
     return json.dumps(result, indent=2)
 
 
@@ -109,6 +109,7 @@ def docs_search_replace(
     replace: str,
     occurrence: int = 1,
     regex: bool = False,
+    token_file: str = "",
 ) -> str:
     """
     Find text in a Google Doc and replace a specific occurrence.
@@ -126,12 +127,25 @@ def docs_search_replace(
     Returns:
         JSON with: ok, replaced (original text), at_index, occurrences_found
     """
-    result = docs_edit.search_replace(doc_id, find, replace, occurrence, regex)
+    result = docs_edit.search_replace(
+        doc_id,
+        find,
+        replace,
+        occurrence,
+        regex,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_insert_after(doc_id: str, anchor: str, text: str, rich: bool = True) -> str:
+def docs_insert_after(
+    doc_id: str,
+    anchor: str,
+    text: str,
+    rich: bool = True,
+    token_file: str = "",
+) -> str:
     """
     Insert a new paragraph immediately after the paragraph containing `anchor`.
 
@@ -154,12 +168,24 @@ def docs_insert_after(doc_id: str, anchor: str, text: str, rich: bool = True) ->
     Returns:
         JSON with: ok, inserted_after (matched paragraph preview), at_index
     """
-    result = docs_edit.insert_after(doc_id, anchor, text, rich=rich)
+    result = docs_edit.insert_after(
+        doc_id,
+        anchor,
+        text,
+        rich=rich,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_insert_before(doc_id: str, anchor: str, text: str, rich: bool = True) -> str:
+def docs_insert_before(
+    doc_id: str,
+    anchor: str,
+    text: str,
+    rich: bool = True,
+    token_file: str = "",
+) -> str:
     """
     Insert a new paragraph immediately before the paragraph containing `anchor`.
 
@@ -182,12 +208,18 @@ def docs_insert_before(doc_id: str, anchor: str, text: str, rich: bool = True) -
     Returns:
         JSON with: ok, inserted_before (matched paragraph preview), at_index
     """
-    result = docs_edit.insert_before(doc_id, anchor, text, rich=rich)
+    result = docs_edit.insert_before(
+        doc_id,
+        anchor,
+        text,
+        rich=rich,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_delete_paragraph(doc_id: str, anchor: str) -> str:
+def docs_delete_paragraph(doc_id: str, anchor: str, token_file: str = "") -> str:
     """
     Delete the paragraph(s) containing `anchor` text.
 
@@ -201,12 +233,16 @@ def docs_delete_paragraph(doc_id: str, anchor: str) -> str:
     Returns:
         JSON with: ok, deleted_count, deleted (list of deleted paragraph previews)
     """
-    result = docs_edit.delete_paragraph(doc_id, anchor)
+    result = docs_edit.delete_paragraph(
+        doc_id,
+        anchor,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_append(doc_id: str, text: str, rich: bool = True) -> str:
+def docs_append(doc_id: str, text: str, rich: bool = True, token_file: str = "") -> str:
     """
     Append a new paragraph at the end of a Google Doc.
 
@@ -226,12 +262,17 @@ def docs_append(doc_id: str, text: str, rich: bool = True) -> str:
     Returns:
         JSON with: ok, appended (text preview), at_index
     """
-    result = docs_edit.append(doc_id, text, rich=rich)
+    result = docs_edit.append(
+        doc_id,
+        text,
+        rich=rich,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_batch_replace(doc_id: str, replacements_json: str) -> str:
+def docs_batch_replace(doc_id: str, replacements_json: str, token_file: str = "") -> str:
     """
     Apply multiple find→replace operations atomically in a single batchUpdate.
 
@@ -252,7 +293,11 @@ def docs_batch_replace(doc_id: str, replacements_json: str) -> str:
         JSON with: ok, applied (count), changes (list of what changed)
     """
     replacements = json.loads(replacements_json)
-    result = docs_edit.batch_replace(doc_id, replacements)
+    result = docs_edit.batch_replace(
+        doc_id,
+        replacements,
+        token_file_override=token_file or None,
+    )
     return json.dumps(result, indent=2)
 
 
@@ -263,6 +308,7 @@ def docs_add_comment(
     anchor_text: str,
     occurrence: int = 1,
     include_anchor_text: bool = True,
+    token_file: str = "",
 ) -> str:
     """
     Add a comment anchored to specific text in a Google Doc.
@@ -295,12 +341,13 @@ def docs_add_comment(
         anchor_text,
         occurrence,
         include_anchor_text=include_anchor_text,
+        token_file_override=token_file or None,
     )
     return json.dumps(result, indent=2)
 
 
 @mcp.tool
-def docs_reply_to_comment(doc_id: str, comment_id: str, reply: str) -> str:
+def docs_reply_to_comment(doc_id: str, comment_id: str, reply: str, token_file: str = "") -> str:
     """
     Reply to an existing comment on a Google Doc.
 
@@ -313,7 +360,7 @@ def docs_reply_to_comment(doc_id: str, comment_id: str, reply: str) -> str:
         JSON with: ok, reply_id, comment_id, content
     """
     from googleapiclient.discovery import build
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     drive = build("drive", "v3", credentials=creds)
     result = drive.replies().create(
         fileId=doc_id,
@@ -330,7 +377,7 @@ def docs_reply_to_comment(doc_id: str, comment_id: str, reply: str) -> str:
 
 
 @mcp.tool
-def docs_resolve_comment(doc_id: str, comment_id: str, reply: str = "") -> str:
+def docs_resolve_comment(doc_id: str, comment_id: str, reply: str = "", token_file: str = "") -> str:
     """
     Resolve (close) a comment on a Google Doc, optionally with a final reply.
 
@@ -343,7 +390,7 @@ def docs_resolve_comment(doc_id: str, comment_id: str, reply: str = "") -> str:
         JSON with: ok, comment_id, resolved
     """
     from googleapiclient.discovery import build
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     drive = build("drive", "v3", credentials=creds)
 
     if reply:
@@ -364,7 +411,7 @@ def docs_resolve_comment(doc_id: str, comment_id: str, reply: str = "") -> str:
 
 
 @mcp.tool
-def docs_delete_comment(doc_id: str, comment_id: str) -> str:
+def docs_delete_comment(doc_id: str, comment_id: str, token_file: str = "") -> str:
     """
     Delete a comment from a Google Doc.
 
@@ -376,14 +423,14 @@ def docs_delete_comment(doc_id: str, comment_id: str) -> str:
         JSON with: ok, comment_id
     """
     from googleapiclient.discovery import build
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     drive = build("drive", "v3", credentials=creds)
     drive.comments().delete(fileId=doc_id, commentId=comment_id).execute()
     return json.dumps({"ok": True, "comment_id": comment_id}, indent=2)
 
 
 @mcp.tool
-def docs_read_comments(doc_id: str, include_resolved: bool = False) -> str:
+def docs_read_comments(doc_id: str, include_resolved: bool = False, token_file: str = "") -> str:
     """
     Read all comments on a Google Doc.
 
@@ -401,7 +448,7 @@ def docs_read_comments(doc_id: str, include_resolved: bool = False) -> str:
     """
     from googleapiclient.discovery import build
 
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     drive = build("drive", "v3", credentials=creds)
 
     resp = drive.comments().list(
@@ -432,7 +479,7 @@ def docs_read_comments(doc_id: str, include_resolved: bool = False) -> str:
 
 
 @mcp.tool
-def docs_list(query: str = "", limit: int = 20) -> str:
+def docs_list(query: str = "", limit: int = 20, token_file: str = "") -> str:
     """
     List Google Docs from Drive, optionally filtered by a search query.
 
@@ -444,7 +491,7 @@ def docs_list(query: str = "", limit: int = 20) -> str:
         JSON array of {id, name, modifiedTime, webViewLink}
     """
     from googleapiclient.discovery import build
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     drive = build("drive", "v3", credentials=creds)
 
     q = 'mimeType="application/vnd.google-apps.document" and trashed=false'
@@ -464,7 +511,7 @@ def docs_list(query: str = "", limit: int = 20) -> str:
 
 
 @mcp.tool
-def docs_create(title: str, initial_text: str = "") -> str:
+def docs_create(title: str, initial_text: str = "", token_file: str = "") -> str:
     """
     Create a new Google Doc with an optional initial paragraph of text.
 
@@ -475,7 +522,7 @@ def docs_create(title: str, initial_text: str = "") -> str:
     Returns:
         JSON with: id, title, webViewLink
     """
-    creds = docs_edit._load_creds()
+    creds = docs_edit._load_creds(token_file_override=token_file or None)
     from googleapiclient.discovery import build
 
     service = build("docs", "v1", credentials=creds)

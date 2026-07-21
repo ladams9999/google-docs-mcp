@@ -16,6 +16,10 @@ As of 2026-07-20, fixes have been implemented for Findings 1 through 9, includin
 
 This analysis is retained as an audit record of the initial review and remediation plan.
 
+Additional status:
+- Multi-identity request support is implemented via optional absolute `token_file` override.
+- Remaining hardening work: add per-token-file refresh locking for high-concurrency same-identity request patterns.
+
 ## Scope
 
 Files reviewed:
